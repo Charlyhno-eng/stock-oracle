@@ -1,0 +1,63 @@
+[application]
+name = "Stock Oracle"
+default_years = 5
+
+[market_data]
+benchmark = "SPY"
+timeout_seconds = 12
+
+[[assets]]
+name = "ASML"
+ticker = "ASML"
+market = "NASDAQ · Semi-conducteurs"
+logo = "A"
+color = "#1f5e93"
+soft_color = "#e8f1f9"
+
+[[assets]]
+name = "Schneider Electric"
+ticker = "SU.PA"
+market = "Euronext Paris · Électrification"
+logo = "S"
+color = "#268363"
+soft_color = "#e7f5ef"
+
+[[assets]]
+name = "GTT"
+ticker = "GTT.PA"
+market = "Euronext Paris · Énergie"
+logo = "G"
+color = "#5764a8"
+soft_color = "#eef0fb"
+
+[[assets]]
+name = "BESI"
+ticker = "BESI.AS"
+market = "Euronext Amsterdam · Équipements IA"
+logo = "B"
+color = "#b66c28"
+soft_color = "#fbf0e5"
+
+[[assets]]
+name = "Technip Energies"
+ticker = "TE.PA"
+market = "Euronext Paris · Ingénierie énergie"
+logo = "T"
+color = "#087c8a"
+soft_color = "#e4f5f6"
+
+[[assets]]
+name = "Safran"
+ticker = "SAF.PA"
+market = "Euronext Paris · Aéronautique"
+logo = "S"
+color = "#8551a6"
+soft_color = "#f2ebf8"
+
+[[assets]]
+name = "Airbus"
+ticker = "AIR.PA"
+market = "Euronext Paris · Aéronautique"
+logo = "A"
+color = "#245a93"
+soft_color = "#e8f0fa"

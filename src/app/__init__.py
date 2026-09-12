@@ -1,0 +1,2 @@
+"""Qt-facing application models."""
+

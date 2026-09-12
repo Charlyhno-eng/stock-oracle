@@ -1,0 +1,8 @@
+[application]
+name = "Stock Oracle"
+default_years = 5
+
+[market_data]
+timeout_seconds = 12
+fallback_to_simulation = true
+
