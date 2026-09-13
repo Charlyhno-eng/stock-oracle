@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from statistics import mean
+from statistics import mean, median
 
 from core.market_data import Price
 
@@ -12,8 +12,16 @@ def _mean(values: list[float]) -> float:
     return mean(values) if values else 0.0
 
 
-def _percent(value: float, digits: int = 1) -> str:
-    return f"{value * 100:+.{digits}f} %".replace(".", ",")
+def _percent(value: float, language: str, digits: int = 1) -> str:
+    formatted = f"{value * 100:+.{digits}f} %"
+    return formatted.replace(".", ",") if language == "fr" else formatted
+
+
+def _ratio(value: float | None, language: str) -> str:
+    if value is None:
+        return "N/D" if language == "fr" else "N/A"
+    formatted = f"{value:.1f}×"
+    return formatted.replace(".", ",") if language == "fr" else formatted
 
 
 def _correlation(left: list[float], right: list[float]) -> float:
@@ -53,15 +61,15 @@ def correlation_matrix(histories: dict[str, list[Price]], tickers: list[str]) ->
     return rows
 
 
-def _strategy(values: list[float], label: str, description: str) -> dict:
+def _strategy(values: list[float], label: str, description: str, language: str) -> dict:
     total = 1.0
     for value in values:
         total *= 1 + value
     return {
         "label": label,
         "description": description,
-        "value": _percent(total - 1),
-        "average": _percent(_mean(values), 2),
+        "value": _percent(total - 1, language),
+        "average": _percent(_mean(values), language, 2),
         "sessions": len(values),
         "positive": f"{_mean([float(value > 0) for value in values]) * 100:.0f} %" if values else "—",
     }
@@ -76,9 +84,10 @@ class HistoricalReport:
     best_month: dict
     best_weekday: dict
     strategies: list[dict]
+    valuation: dict
 
 
-def analyze(prices: list[Price], benchmark: list[Price], years: int) -> HistoricalReport:
+def analyze(prices: list[Price], benchmark: list[Price], years: int, valuation=None, language: str = "fr") -> HistoricalReport:
     """Build descriptive results only; no forecast or trading recommendation."""
     benchmark_by_date = {point.timestamp.date(): point.adjusted_close for point in benchmark}
     aligned = [(point, benchmark_by_date[point.timestamp.date()]) for point in prices if point.timestamp.date() in benchmark_by_date]
@@ -100,8 +109,11 @@ def analyze(prices: list[Price], benchmark: list[Price], years: int) -> Historic
         monthly_values[current.timestamp.month - 1].append(daily_return)
         weekday_values[current.timestamp.weekday()].append(daily_return)
 
-    month_labels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
-    weekday_labels = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
+    month_labels = (
+        ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
+        if language == "fr" else ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    )
+    weekday_labels = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"] if language == "fr" else ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     months = [{"label": label, "value": _mean(values) * 100, "observations": len(values)} for label, values in zip(month_labels, monthly_values)]
     weekdays = [{"label": label, "value": _mean(values) * 100, "observations": len(values)} for label, values in zip(weekday_labels, weekday_values)]
     best_month = max(months, key=lambda item: item["value"])
@@ -110,23 +122,26 @@ def analyze(prices: list[Price], benchmark: list[Price], years: int) -> Historic
     intraday = [point.close / point.open - 1 for point in prices if point.open and point.close]
     overnight = [current.open / previous.close - 1 for previous, current in zip(prices, prices[1:]) if previous.close and current.open]
     strategies = [
-        _strategy(intraday, "Ouverture → clôture", "Achat à l’ouverture, vente à la clôture de chaque séance."),
-        _strategy(overnight, "Clôture → ouverture", "Achat à la clôture, vente à l’ouverture de la séance suivante."),
+        _strategy(intraday, "Ouverture → clôture" if language == "fr" else "Open → close", "Achat à l’ouverture, vente à la clôture de chaque séance." if language == "fr" else "Buy at the open and sell at the close of each session.", language),
+        _strategy(overnight, "Clôture → ouverture" if language == "fr" else "Close → open", "Achat à la clôture, vente à l’ouverture de la séance suivante." if language == "fr" else "Buy at the close and sell at the next session’s open.", language),
     ]
+    pe_values = [value for value in getattr(valuation, "historical_pe", []) if value > 0]
+    current_pe = getattr(valuation, "current_pe", None)
 
     return HistoricalReport(
         headline={
-            "asset_return": _percent(asset_return),
-            "sp500_return": _percent(market_return),
-            "difference": _percent(asset_return - market_return),
+            "asset_return": _percent(asset_return, language),
+            "sp500_return": _percent(market_return, language),
+            "difference": _percent(asset_return - market_return, language),
             "sessions": len(aligned),
-            "start": aligned[0][0].timestamp.strftime("%d/%m/%Y"),
-            "end": aligned[-1][0].timestamp.strftime("%d/%m/%Y"),
+            "start": aligned[0][0].timestamp.strftime("%d/%m/%Y" if language == "fr" else "%Y-%m-%d"),
+            "end": aligned[-1][0].timestamp.strftime("%d/%m/%Y" if language == "fr" else "%Y-%m-%d"),
         },
         chart_data=chart_data,
         months=months,
         weekdays=weekdays,
-        best_month={"label": best_month["label"], "value": _percent(best_month["value"] / 100, 2), "observations": best_month["observations"]},
-        best_weekday={"label": best_weekday["label"], "value": _percent(best_weekday["value"] / 100, 2), "observations": best_weekday["observations"]},
+        best_month={"label": best_month["label"], "value": _percent(best_month["value"] / 100, language, 2), "observations": best_month["observations"]},
+        best_weekday={"label": best_weekday["label"], "value": _percent(best_weekday["value"] / 100, language, 2), "observations": best_weekday["observations"]},
         strategies=strategies,
+        valuation={"current": _ratio(current_pe, language), "median": _ratio(median(pe_values) if pe_values else None, language), "mean": _ratio(_mean(pe_values) if pe_values else None, language), "observations": len(pe_values)},
     )

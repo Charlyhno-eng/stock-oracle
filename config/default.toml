@@ -1,8 +1,8 @@
 [application]
 name = "Stock Oracle"
 default_years = 5
+language = "fr" # "fr" (default) or "en"
 
 [market_data]
 timeout_seconds = 12
 fallback_to_simulation = true
-
